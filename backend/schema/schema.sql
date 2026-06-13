@@ -23,20 +23,20 @@ CREATE TABLE direcciones (
     id SERIAL PRIMARY KEY,
     calle VARCHAR(255),
     av VARCHAR(255),
-    sector VARCHAR(100),
+    barrio VARCHAR(100),
     n_casa VARCHAR(50),
-    state VARCHAR(100),
+    parroquia VARCHAR(100),
+    municipio VARCHAR(100),
+    estado VARCHAR(100),
     id_user INTEGER REFERENCES usuarios(id) ON DELETE CASCADE
 );
-INSERT INTO direcciones (calle, av, sector, n_casa, state, id_user) VALUES 
-('Av. San Martin', '9 de Julio', 'Centro', '150', 'Mendoza', 2);
 
 -- 4. MODULOS Y PERMISOS (RBAC)
 CREATE TABLE modulos (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL
 );
-INSERT INTO modulos (nombre) VALUES ('Inscripciones'), ('Ajustes');
+INSERT INTO modulos (nombre) VALUES ('Inscripciones'), ('Ajustes'), ('Administración');
 
 CREATE TABLE rm_pagin (
     id SERIAL PRIMARY KEY,
@@ -45,6 +45,8 @@ CREATE TABLE rm_pagin (
     pagina VARCHAR(100)
 );
 INSERT INTO rm_pagin (rol_id, modulo_id, pagina) VALUES (1, 1, '/admin/reportes');
+INSERT INTO rm_pagin (rol_id, modulo_id, pagina) VALUES (1, 3, '/admin/dashboard');
+INSERT INTO rm_pagin (rol_id, modulo_id, pagina) VALUES (2, 1, '/user/panel');
 
 CREATE TABLE permisos (
     id SERIAL PRIMARY KEY,
@@ -56,6 +58,10 @@ CREATE TABLE permisos (
 );
 INSERT INTO permisos (id_rm_pagin, puede_crear, puede_leer, puede_editar, puede_borrar) 
 VALUES (1, true, true, true, true);
+INSERT INTO permisos (id_rm_pagin, puede_crear, puede_leer, puede_editar, puede_borrar) 
+VALUES (2, true, true, true, true);
+INSERT INTO permisos (id_rm_pagin, puede_crear, puede_leer, puede_editar, puede_borrar) 
+VALUES (3, true, true, true, false);
 
 -- 5. LÓGICA DE NEGOCIO (CORREGIDA)
 CREATE TABLE estudiantes (
@@ -72,7 +78,30 @@ CREATE TABLE inscripciones (
     usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
     estudiante_id INTEGER REFERENCES estudiantes(id) ON DELETE CASCADE,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    -- RESTRICCIÓN CLAVE: Evita inscribir al mismo alumno dos veces
+    estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
+    observaciones TEXT,
+    actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT estudiante_unico UNIQUE (estudiante_id)
 );
-INSERT INTO inscripciones (usuario_id, estudiante_id) VALUES (2, 1);
+INSERT INTO inscripciones (usuario_id, estudiante_id, estado) VALUES (2, 1, 'pendiente');
+
+CREATE TABLE inscripcion_historial (
+    id SERIAL PRIMARY KEY,
+    inscripcion_id INTEGER NOT NULL REFERENCES inscripciones(id) ON DELETE CASCADE,
+    estado_anterior VARCHAR(30),
+    estado_nuevo VARCHAR(30) NOT NULL,
+    usuario_id INTEGER REFERENCES usuarios(id),
+    nota TEXT,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO inscripcion_historial (inscripcion_id, estado_anterior, estado_nuevo, usuario_id, nota)
+VALUES (1, NULL, 'pendiente', 2, 'Inscripción creada');
+
+CREATE TABLE contactos (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(150),
+    mensaje TEXT NOT NULL,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

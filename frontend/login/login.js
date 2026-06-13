@@ -1,78 +1,76 @@
-const API_URL = 'http://localhost:3000';
+const API_URL = window.API_URL || 'http://localhost:3000';
 
-// --- 1. TU LÓGICA VISUAL (Está perfecta) ---
 const urlParams = new URLSearchParams(window.location.search);
-const formType = urlParams.get('form'); 
+const formType = urlParams.get('form') || 'login';
 
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
+const tabLogin = document.getElementById('tab-login');
+const tabRegister = document.getElementById('tab-register');
 
-if(formType === 'login'){
-    loginForm.style.display = 'flex';
-    registerForm.style.display = 'none';
-} else if(formType === 'register'){
-    registerForm.style.display = 'flex';
-    loginForm.style.display = 'none';
-} else {
-    loginForm.style.display = 'flex';
-    registerForm.style.display = 'none';
-}
+const showAuthForm = (type) => {
+    const isLogin = type === 'login';
+    loginForm.classList.toggle('active', isLogin);
+    registerForm.classList.toggle('active', !isLogin);
+    tabLogin.classList.toggle('active', isLogin);
+    tabRegister.classList.toggle('active', !isLogin);
+};
 
-// --- 2. LÓGICA DE ENVÍO AL BACKEND ---
+showAuthForm(formType === 'register' ? 'register' : 'login');
 
-// Evento para Registro
+tabLogin.addEventListener('click', () => {
+    showAuthForm('login');
+    history.replaceState(null, '', 'login.html?form=login');
+});
+tabRegister.addEventListener('click', () => {
+    showAuthForm('register');
+    history.replaceState(null, '', 'login.html?form=register');
+});
+
 registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const datos = Object.fromEntries(formData); // Esto toma nombre, apellido, cedula, contraseña
-
+    const datos = Object.fromEntries(new FormData(e.target));
     try {
         const res = await fetch(`${API_URL}/usuarios`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(datos)
+            body: JSON.stringify(datos),
         });
-
         if (res.ok) {
-            alert('¡Registro exitoso! Ahora podés loguearte.');
-            window.location.href = 'login.html?form=login';
+            showToast('¡Registro exitoso! Ya puedes iniciar sesión.', 'success');
+            showAuthForm('login');
+            history.replaceState(null, '', 'login.html?form=login');
         } else {
             const err = await res.json();
-            alert('Error: ' + err.error);
+            showToast(err.error || 'Error al registrar', 'error');
         }
-    } catch (error) {
-        alert('No se pudo conectar con el servidor');
+    } catch {
+        showToast('No se pudo conectar con el servidor', 'error');
     }
 });
 
-// Evento para Login
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const datos = Object.fromEntries(formData);
-
+    const datos = Object.fromEntries(new FormData(e.target));
     try {
         const res = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(datos)
+            body: JSON.stringify(datos),
         });
-
         const data = await res.json();
-
         if (res.ok) {
-            // Guardamos el usuario (con su rol) en el navegador
             localStorage.setItem('usuario', JSON.stringify(data.usuario));
-            
-            alert('¡Bienvenido!');
-            // Redirección según rol de la DB (1=Admin, 2=User)
-            window.location.href = data.usuario.rol_id === 1 
-                ? '../admin/admin_dashboard.html' 
-                : '../user/usuario_dashboard.html';
+            showToast(`¡Bienvenido, ${data.usuario.nombre}!`, 'success');
+            setTimeout(() => {
+                window.location.href = data.usuario.rol_id === 1
+                    ? '../admin/admin_dashboard.html'
+                    : '../user/usuario_dashboard.html';
+            }, 600);
         } else {
-            alert('Cédula o contraseña incorrecta');
+            showToast('Cédula o contraseña incorrecta', 'error');
         }
-    } catch (error) {
-        alert('Error en la conexión');
+    } catch {
+        showToast('Error de conexión con el servidor', 'error');
     }
 });
